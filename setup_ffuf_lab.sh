@@ -19,22 +19,23 @@ echo "[+] Enabling important Apache modules..."
 a2enmod rewrite
 a2enmod headers
 
-echo "[+] Copying lab webroot..."
+echo "[+] Preparing /var/www/html directory..."
+mkdir -p /var/www/html
 rm -rf /var/www/html/*
 cp -r webroot/* /var/www/html/
 
 echo "[+] Deploying virtual host directories..."
-for d in vhosts/*; do
-    name=$(basename "$d" .conf)
-    rm -rf /var/www/$name
-    cp -r "vhosts/$name" /var/www/
+for dir in vhosts/*/; do
+    name=$(basename "$dir")
+    rm -rf "/var/www/$name"
+    cp -r "$dir" "/var/www/$name"
 done
 
 echo "[+] Deploying virtual host configs..."
 cp vhosts/*.conf /etc/apache2/sites-available/
 
 echo "[+] Disabling default Apache site..."
-a2dissite 000-default.conf
+a2dissite 000-default.conf 2>/dev/null
 
 echo "[+] Enabling all virtual host configs..."
 for f in /etc/apache2/sites-available/*.conf; do
@@ -63,5 +64,5 @@ systemctl restart apache2
 echo ""
 echo "[+] FFUF Lab installation COMPLETE!"
 echo "Open in browser: http://localhost/"
-echo "Or any vhost like http://dev.local"
+echo "Try: http://dev.local, http://api.local, http://ffuf.lab"
 echo ""
