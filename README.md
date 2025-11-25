@@ -8,8 +8,5 @@ sudo bash setup_ffuf_lab.sh
 
 ## Start Lab
 Visit:
-http://localhost/
-http://dev.local
-http://api.local
-http://test.local
-http://ffuf.lab
+http://localhost/ 
+
