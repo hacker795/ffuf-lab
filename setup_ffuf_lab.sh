@@ -1,13 +1,11 @@
 #!/bin/bash
 
-# --------------------------------------------
 # FFUF LAB SETUP SCRIPT
 # Cyber Twinkle
-# --------------------------------------------
 
-# Must be root
+# Check root
 if [ "$EUID" -ne 0 ]; then
-    echo "[!] Run using: sudo bash setup_ffuf_lab.sh"
+    echo "Please run as root: sudo bash setup_ffuf_lab.sh"
     exit
 fi
 
@@ -38,13 +36,12 @@ echo "[+] Deploying virtual host configs..."
 cp vhosts/*.conf /etc/apache2/sites-available/
 
 echo "[+] Creating localhost.conf..."
-cat <<EOF >/etc/apache2/sites-available/localhost.conf
+cat <<EOF > /etc/apache2/sites-available/localhost.conf
 <VirtualHost *:80>
     ServerName localhost
     DocumentRoot /var/www/html
 
     <Directory /var/www/html>
-        Options Indexes FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
@@ -52,28 +49,32 @@ cat <<EOF >/etc/apache2/sites-available/localhost.conf
 EOF
 
 echo "[+] Fixing wildcard.ffuf.conf ..."
-sed -i 's/ServerName \*.ffuf.lab/ServerName ffuf.lab\n    ServerAlias *.ffuf.lab/' \
-    /etc/apache2/sites-available/wildcard.ffuf.conf
+cat <<EOF > /etc/apache2/sites-available/wildcard.ffuf.conf
+<VirtualHost *:80>
+    ServerName ffuf.lab
+    ServerAlias *.ffuf.lab
+    DocumentRoot /var/www/wildcard.ffuf
+    DirectoryIndex index.php
+
+    <Directory /var/www/wildcard.ffuf>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+EOF
 
 echo "[+] Disabling default Apache site..."
 a2dissite 000-default.conf 2>/dev/null
 
 echo "[+] Enabling FFUF vhosts..."
 a2ensite localhost.conf
-a2ensite api.local.conf
-a2ensite dev.local.conf
-a2ensite test.local.conf
-a2ensite ffuf.lab.conf
-a2ensite backup.dev.conf
-a2ensite debug.api.conf
-a2ensite internal.dev.conf
-a2ensite wildcard.ffuf.conf
+for f in /etc/apache2/sites-available/*.conf; do
+    a2ensite "$(basename "$f")" 2>/dev/null
+done
 
 echo "[+] Adding hosts entries..."
 add_host() {
-    if ! grep -q "$1" /etc/hosts; then
-        echo "$1" >> /etc/hosts
-    fi
+    grep -q "$1" /etc/hosts || echo "$1" >> /etc/hosts
 }
 
 add_host "127.0.0.1 localhost"
@@ -90,6 +91,7 @@ echo "[+] Restarting Apache..."
 systemctl restart apache2
 
 if ! systemctl is-active --quiet apache2; then
+    echo ""
     echo "[!] ERROR: Apache failed to start."
     echo "    Run: journalctl -xeu apache2"
     exit 1
@@ -98,12 +100,9 @@ fi
 echo ""
 echo "==============================================="
 echo "[+] FFUF Lab installation COMPLETE!"
-echo "Open:   http://localhost/"
+echo "Visit:  http://localhost/"
 echo "        http://dev.local"
 echo "        http://api.local"
 echo "        http://ffuf.lab"
-echo "        http://backup.dev.local"
-echo "        http://debug.api.local"
-echo "        http://wildcard.ffuf.lab"
 echo "==============================================="
 echo ""
