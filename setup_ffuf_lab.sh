@@ -1,23 +1,26 @@
 #!/bin/bash
 
+# --------------------------------------------
 # FFUF LAB SETUP SCRIPT
 # Cyber Twinkle
+# --------------------------------------------
 
-# Require root
+# Must be root
 if [ "$EUID" -ne 0 ]; then
-    echo "Please run as root: sudo bash setup_ffuf_lab.sh"
+    echo "[!] Run using: sudo bash setup_ffuf_lab.sh"
     exit
 fi
 
 echo "[+] Updating system..."
 apt update -y
 
-echo "[+] Installing Apache & PHP..."
+echo "[+] Installing Apache + PHP..."
 apt install -y apache2 php libapache2-mod-php unzip
 
 echo "[+] Enabling important Apache modules..."
 a2enmod rewrite
 a2enmod headers
+a2enmod autoindex
 
 echo "[+] Preparing /var/www/html..."
 mkdir -p /var/www/html
@@ -25,36 +28,46 @@ rm -rf /var/www/html/*
 cp -r webroot/* /var/www/html/
 
 echo "[+] Deploying virtual host directories..."
-for d in vhosts/*/; do
-    name=$(basename "$d")
+for dir in vhosts/*/; do
+    name=$(basename "$dir")
     rm -rf "/var/www/$name"
-    cp -r "$d" "/var/www/$name"
+    cp -r "$dir" "/var/www/$name"
 done
 
 echo "[+] Deploying virtual host configs..."
 cp vhosts/*.conf /etc/apache2/sites-available/
 
-echo "[+] Fixing wildcard FFUF vhost..."
-cat <<EOF >/etc/apache2/sites-available/wildcard.ffuf.conf
+echo "[+] Creating localhost.conf..."
+cat <<EOF >/etc/apache2/sites-available/localhost.conf
 <VirtualHost *:80>
-    ServerName ffuf.lab
-    ServerAlias *.ffuf.lab
-    DocumentRoot /var/www/wildcard.ffuf
+    ServerName localhost
+    DocumentRoot /var/www/html
 
-    <Directory /var/www/wildcard.ffuf>
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
 </VirtualHost>
 EOF
 
+echo "[+] Fixing wildcard.ffuf.conf ..."
+sed -i 's/ServerName \*.ffuf.lab/ServerName ffuf.lab\n    ServerAlias *.ffuf.lab/' \
+    /etc/apache2/sites-available/wildcard.ffuf.conf
+
 echo "[+] Disabling default Apache site..."
 a2dissite 000-default.conf 2>/dev/null
 
 echo "[+] Enabling FFUF vhosts..."
-for f in /etc/apache2/sites-available/*.conf; do
-    a2ensite "$(basename "$f")"
-done
+a2ensite localhost.conf
+a2ensite api.local.conf
+a2ensite dev.local.conf
+a2ensite test.local.conf
+a2ensite ffuf.lab.conf
+a2ensite backup.dev.conf
+a2ensite debug.api.conf
+a2ensite internal.dev.conf
+a2ensite wildcard.ffuf.conf
 
 echo "[+] Adding hosts entries..."
 add_host() {
@@ -63,6 +76,7 @@ add_host() {
     fi
 }
 
+add_host "127.0.0.1 localhost"
 add_host "127.0.0.1 dev.local"
 add_host "127.0.0.1 api.local"
 add_host "127.0.0.1 test.local"
@@ -75,12 +89,21 @@ add_host "127.0.0.1 wildcard.ffuf.lab"
 echo "[+] Restarting Apache..."
 systemctl restart apache2
 
+if ! systemctl is-active --quiet apache2; then
+    echo "[!] ERROR: Apache failed to start."
+    echo "    Run: journalctl -xeu apache2"
+    exit 1
+fi
+
 echo ""
 echo "==============================================="
 echo "[+] FFUF Lab installation COMPLETE!"
-echo "Visit:  http://localhost/"
+echo "Open:   http://localhost/"
 echo "        http://dev.local"
 echo "        http://api.local"
 echo "        http://ffuf.lab"
+echo "        http://backup.dev.local"
+echo "        http://debug.api.local"
+echo "        http://wildcard.ffuf.lab"
 echo "==============================================="
 echo ""
