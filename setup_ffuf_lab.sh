@@ -1,12 +1,10 @@
 #!/bin/bash
 
 # FFUF LAB SETUP SCRIPT
-# Cyber Twinkle
 
-# Check root
 if [ "$EUID" -ne 0 ]; then
     echo "Please run as root: sudo bash setup_ffuf_lab.sh"
-    exit
+    exit 1
 fi
 
 echo "[+] Updating system..."
@@ -19,6 +17,7 @@ echo "[+] Enabling important Apache modules..."
 a2enmod rewrite
 a2enmod headers
 a2enmod autoindex
+a2enmod ssl   
 
 echo "[+] Preparing /var/www/html..."
 mkdir -p /var/www/html
@@ -65,11 +64,16 @@ EOF
 
 echo "[+] Disabling default Apache site..."
 a2dissite 000-default.conf 2>/dev/null
+a2dissite default-ssl.conf 2>/dev/null   # 🔧 FIX: explicitly disable SSL site
 
 echo "[+] Enabling FFUF vhosts..."
 a2ensite localhost.conf
+
 for f in /etc/apache2/sites-available/*.conf; do
-    a2ensite "$(basename "$f")" 2>/dev/null
+    site=$(basename "$f")
+    [[ "$site" == "default-ssl.conf" ]] && continue
+    [[ "$site" == "000-default.conf" ]] && continue
+    a2ensite "$site" 2>/dev/null
 done
 
 echo "[+] Adding hosts entries..."
@@ -86,6 +90,9 @@ add_host "127.0.0.1 internal.dev.local"
 add_host "127.0.0.1 backup.dev.local"
 add_host "127.0.0.1 debug.api.local"
 add_host "127.0.0.1 wildcard.ffuf.lab"
+
+echo "[+] Testing Apache configuration..."
+apachectl configtest || exit 1   # 🔧 SAFETY CHECK
 
 echo "[+] Restarting Apache..."
 systemctl restart apache2
