@@ -1,0 +1,8 @@
+APP_NAME=FuzzCorp
+APP_ENV=production
+
+DB_HOST=localhost
+DB_USER=root
+DB_PASS=SuperSecretPassword123
+
+API_KEY=9823jf9823jf9823
