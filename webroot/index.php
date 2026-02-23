@@ -1,5 +1,5 @@
 <?php
-
+sleep(1);
 echo "Welcome to FuzzCorp Web Portal";
 
 if (isset($_GET['debug']) && $_GET['debug'] == "1") {
