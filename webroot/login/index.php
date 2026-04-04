@@ -2,37 +2,28 @@
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    $user = $_POST['user'] ?? '';
-    $pass = $_POST['pass'] ?? '';
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
 
-    // Correct credentials
-    if ($user === 'admin' && $pass === 'admin123') {
-
-        // SUCCESS → redirect to dashboard (no status needed)
-        header("Location: /dashboard.php");
-        exit;
-
+    if ($username === 'admin' && $password === 'admin123') {
+        echo "SUCCESS_LOGIN";
     } else {
-
-        // FAILURE → redirect back with status flag
-        header("Location: /login/?status=invalid");
-        exit;
+        echo "FAIL_LOGIN";
     }
+
+    exit;
 }
 ?>
+
 <!doctype html>
 <html>
 <body>
 
-<?php
-if (isset($_GET['status']) && $_GET['status'] === 'invalid') {
-    echo "<p style='color:red'>Invalid credentials!</p>";
-}
-?>
+<h2>Login Panel</h2>
 
 <form method="POST" action="/login/">
-  <label>User: <input name="user" /></label><br/>
-  <label>Pass: <input name="pass" type="password" /></label><br/>
+  <label>Username: <input name="username" /></label><br/>
+  <label>Password: <input name="password" type="password" /></label><br/>
   <button type="submit">Login</button>
 </form>
 
